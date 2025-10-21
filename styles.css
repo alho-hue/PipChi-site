@@ -647,3 +647,11 @@ select option {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+.adsense-section {
+  margin: 40px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
