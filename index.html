@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="PipChi Boutique - Découvrez des articles uniques avec un style authentique !">
+    <meta name="keywords" content="boutique, ecommerce, produits, mode, accessoires">
+    <meta property="og:title" content="PipChi Boutique - Articles Uniques">
+    <meta property="og:description" content="Découvrez des articles uniques avec un style authentique !">
+    <meta property="og:image" content="hero-image.jpg">
+    <meta property="og:url" content="https://pipchi-boutique.com">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>PipChi Boutique - Articles Uniques et Authentiques</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- ICONE CORRIGÉE - Essayer différents formats -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="shortcut icon" href="favicon.ico">
+
+</head>
+<body>
+
+  <!-- Barre de progression de défilement -->
+  <div id="progressBar" aria-hidden="true"></div>
+
+  <!-- Topbar (logo + admin) -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">Pip<span>Chi</span></div>
+      <div class="tag">La qualité est la vie, le Service Est L'âme; Votre Satisfaction Est Garantie.</div>
+    </div>
+    <div class="actions">
+      <button id="adminBtn" class="btn">Espace Propriétaire</button>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu mobile">☰</button>
+    </div>
+  </header>
+
+  <!-- Navigation principale -->
+  <nav class="main-nav" id="mainNav">
+    <a href="#articles">Produits</a>
+    <a href="#promo">Promotions</a>
+    <a href="#testimonials">Avis Clients</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <!-- Hero / image de couverture -->
+  <section class="hero" role="banner">
+    <div class="header-content">
+      <h1 class="welcome-message">Bienvenue chez PipChi Boutique</h1>
+      <p class="intro-text">Découvrez des articles uniques avec un style authentique !</p>
+    </div>
+  </section>
+
+  <!-- Promotion -->
+  <section class="promo" aria-labelledby="promo-title" id="promo">
+    <div class="promo-inner">
+      <h2 id="promo-title">🎉 Offre Spéciale</h2>
+      <p>Bénéficiez de <strong>-2%</strong> avec le code promo <strong class="promo-code">PIPCHI</strong> sur OUMISTORE.</p>
+      <a href="https://oumistore.com/?page=boutique&boutiqueId=4518" target="_blank" class="btn special-offer-btn" rel="noopener">Utiliser le code PIPCHI</a>
+    </div>
+  </section>
+
+  <!-- Social Proof -->
+  <section class="social-proof">
+    <div class="proof-grid">
+      <div class="proof-item">
+        <div class="proof-number">500+</div>
+        <div class="proof-label">Clients satisfaits</div>
+      </div>
+      <div class="proof-item">
+        <div class="proof-number">98%</div>
+        <div class="proof-label">Avis positifs</div>
+      </div>
+      <div class="proof-item">
+        <div class="proof-number">24h</div>
+        <div class="proof-label">Livraison express</div>
+      </div>
+      <div class="proof-item">
+        <div class="proof-number">100%</div>
+        <div class="proof-label">Garantie qualité</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contrôles produits -->
+  <section class="product-controls">
+    <div class="controls-inner">
+      <input type="text" id="search" placeholder="🔍 Rechercher un produit..." aria-label="Rechercher un produit">
+      <select id="categoryFilter" aria-label="Filtrer par catégorie">
+        <option value="all">Toutes catégories</option>
+        <option value="vetements">👕 Vêtements</option>
+        <option value="accessoires">👜 Accessoires</option>
+        <option value="electronique">📱 Électronique</option>
+        <option value="maison">🏠 Maison</option>
+        <option value="autres">📦 Autres</option>
+      </select>
+      <select id="filterStock" aria-label="Filtrer par stock">
+        <option value="all">Tous les produits</option>
+        <option value="in">En stock</option>
+        <option value="out">Rupture de stock</option>
+      </select>
+      <select id="sortProducts" aria-label="Trier les produits">
+        <option value="new">Nouveautés</option>
+        <option value="popular">Populaires</option>
+        <option value="price-asc">Prix croissant</option>
+        <option value="price-desc">Prix décroissant</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- Produits -->
+  <section class="articles" aria-labelledby="articles-title" id="articles">
+    <h2 id="articles-title">🛍️ Nos Articles</h2>
+    <div id="productGrid" class="article-list" aria-live="polite">
+      <!-- produits générés via script.js -->
+    </div>
+  </section>
+
+  <!-- Témoignages avec formulaire d'avis -->
+  <section class="testimonials" id="testimonials">
+    <div class="testimonials-container">
+      <h2>💬 Ce que disent nos clients</h2>
+      
+      <!-- Formulaire d'avis -->
+      <div class="add-review-section">
+        <h3>Laissez votre avis</h3>
+        <form id="reviewForm" class="review-form">
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="reviewName" placeholder="Votre nom" required maxlength="30">
+            </div>
+            <div class="form-group">
+              <select id="reviewRating" required>
+                <option value="">Note</option>
+                <option value="5">★★★★★ Excellente</option>
+                <option value="4">★★★★☆ Très bonne</option>
+                <option value="3">★★★☆☆ Bonne</option>
+                <option value="2">★★☆☆☆ Moyenne</option>
+                <option value="1">★☆☆☆☆ Médiocre</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <textarea id="reviewText" placeholder="Partagez votre expérience..." required maxlength="500" rows="3"></textarea>
+            <div class="char-count"><span id="charCount">0</span>/500 caractères</div>
+          </div>
+          <button type="submit" class="btn primary">Publier mon avis</button>
+        </form>
+      </div>
+
+      <!-- Liste des avis -->
+      <div class="testimonial-grid" id="testimonialGrid">
+        <!-- Avis générés via script.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Formulaire de contact -->
+  <section class="contact-form" aria-labelledby="contact-title" id="contact">
+    <div class="contact-container">
+      <h2 id="contact-title">📞 Contactez-nous</h2>
+      <div class="contact-content">
+        <div class="contact-info">
+          <h3>Nous contacter</h3>
+          <div class="contact-item">
+            <span class="contact-icon">📧</span>
+            <div>
+              <strong>Email</strong>
+              <p>contact@pipchi.com</p>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-icon">📱</span>
+            <div>
+              <strong>Téléphone</strong>
+              <p>+223 74 82 98 11</p>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-icon">🕒</span>
+            <div>
+              <strong>Horaires</strong>
+              <p>Lun - Sam: 8h - 20h</p>
+            </div>
+          </div>
+        </div>
+
+        <form id="contactForm" action="https://formspree.io/f/mqakzbye" method="POST" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Votre nom *</label>
+              <input type="text" id="name" name="name" required placeholder="Votre nom complet">
+              <small class="error" id="nameError">Le nom est requis</small>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Votre email *</label>
+              <input type="email" id="email" name="email" required placeholder="votre@email.com">
+              <small class="error" id="emailError">Email invalide</small>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="subject">Sujet *</label>
+            <input type="text" id="subject" name="subject" required placeholder="Sujet de votre message">
+            <small class="error" id="subjectError">Le sujet est requis</small>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Votre message *</label>
+            <textarea id="message" name="message" required placeholder="Décrivez votre demande..." rows="5"></textarea>
+            <small class="error" id="messageError">Le message est requis</small>
+          </div>
+
+          <button type="submit" class="btn primary">Envoyer le message</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- QR Code et Réseaux sociaux -->
+<section class="qr-social" id="qr">
+  <div class="qr-social-container">
+    <div class="qr-section">
+      <h2>📱 Scannez le QR Code</h2>
+      <p>Accédez rapidement à notre boutique</p>
+      <div class="qr-code">
+        <img src="qr-code.png" alt="QR Code pour accéder à la boutique PipChi" loading="lazy" />
+      </div>
+    </div>
+    
+    <div class="social-section">
+      <h2>🌍 Suivez-nous</h2>
+      <p>Rejoignez notre communauté</p>
+      <div class="social-links">
+        <a href="https://www.instagram.com/pipchi2024" target="_blank" rel="noopener" class="social-link">
+          <img src="images/instagram-logo.png" alt="Instagram" class="social-logo">
+          <span>Instagram</span>
+        </a>
+        <a href="https://oumistore.com/?page=boutique&boutiqueId=4518" target="_blank" rel="noopener" class="social-link">
+          <img src="images/oumistore-logo.png" alt="OUMISTORE" class="social-logo">
+          <span>OUMISTORE</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <!-- Popup de confirmation de redirection -->
+  <div id="redirectPopup" class="modal hidden" aria-hidden="true">
+    <div class="modal-card redirect-popup">
+      <h3>🔗 Redirection vers OUMISTORE</h3>
+      <p id="redirectMessage">Vous allez être redirigé vers OUMISTORE pour finaliser votre commande.</p>
+      <div class="popup-buttons">
+        <button id="confirmRedirect" class="btn primary">Continuer</button>
+        <button id="cancelRedirect" class="btn ghost">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal galerie d'images -->
+  <div id="galleryModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card gallery-modal">
+      <button class="close" id="closeGallery" aria-label="Fermer la galerie">✕</button>
+      <h3 id="galleryProductName"></h3>
+      <div class="gallery-main">
+        <img id="galleryMainImage" src="" alt="" />
+      </div>
+      <div class="gallery-thumbnails" id="galleryThumbnails"></div>
+    </div>
+  </div>
+
+  <!-- Admin modal (propriétaire) -->
+  <div id="adminModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card admin-modal" role="dialog" aria-modal="true" aria-label="Panneau d'administration">
+      <button class="close" id="closeAdmin" aria-label="Fermer l'administration">✕</button>
+      <h2>⚙️ Administration — PipChi</h2>
+
+      <div id="loginSection">
+        <p>Entrez le mot de passe propriétaire pour accéder au panneau admin.</p>
+        <div class="form-group">
+          <input id="adminPassword" type="password" placeholder="Mot de passe propriétaire" required />
+          <small class="error" id="adminPasswordError"></small>
+        </div>
+        <div class="row">
+          <button id="loginBtn" class="btn primary">Se connecter</button>
+          <button id="cancelLogin" class="btn ghost">Annuler</button>
+        </div>
+        <small>Astuce (demo) : mot de passe par défaut <code>pipchi123</code></small>
+      </div>
+
+      <div id="adminPanel" class="hidden">
+        <!-- Navigation admin -->
+        <div class="admin-tabs">
+          <button class="admin-tab active" data-tab="products">📦 Produits</button>
+          <button class="admin-tab" data-tab="analytics">📊 Analytics</button>
+          <button class="admin-tab" data-tab="reviews">
+            💬 Avis Clients 
+            <span class="notification-badge" id="pendingReviewsCount">0</span>
+          </button>
+        </div>
+
+        <!-- Onglet Produits -->
+        <div id="adminProducts" class="admin-tab-content active">
+          <h3>Gestion des produits</h3>
+          <form id="productForm" class="admin-form">
+            <div class="form-row">
+              <div class="form-group">
+                <input id="p_name" placeholder="Nom du produit *" required />
+              </div>
+              <div class="form-group">
+                <select id="p_category" required style="color: #000; background: #fff;">
+                  <option value="">Catégorie *</option>
+                  <option value="autres">📦 Autres</option>
+                  <option value="vetements">👕 Vêtements</option>
+                  <option value="accessoires">👜 Accessoires</option>
+                  <option value="electronique">📱 Électronique</option>
+                  <option value="maison">🏠 Maison</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <input id="p_price" type="number" placeholder="Prix (F CFA) *" required min="0" />
+              </div>
+              <div class="form-group">
+                <input id="p_stock" type="number" placeholder="Quantité en stock *" required min="0" />
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <textarea id="p_desc" placeholder="Description du produit" rows="3" maxlength="500"></textarea>
+              <div class="char-count"><span id="descCount">0</span>/500</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" id="p_featured" />
+                <span>⭐ Produit phare</span>
+              </label>
+            </div>
+            
+            <div class="form-group">
+              <label class="file">
+                <input id="p_image" type="file" accept="image/*" multiple />
+                <span>📷 Choisir des images (max 5)</span>
+              </label>
+              <div id="imagePreview" class="image-previews"></div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn primary">💾 Enregistrer le produit</button>
+              <button id="newProduct" type="button" class="btn ghost">🆕 Nouveau produit</button>
+            </div>
+            <input id="p_id" type="hidden" />
+          </form>
+
+          <div class="admin-stats-enhanced">
+            <div class="stat-card">
+              <h4>📦 Total Produits</h4>
+              <span id="totalProducts">0</span>
+            </div>
+            <div class="stat-card">
+              <h4>👆 Clicks Total</h4>
+              <span id="totalClicks">0</span>
+            </div>
+            <div class="stat-card">
+              <h4>🔥 Produit Populaire</h4>
+              <span id="popularProduct">-</span>
+            </div>
+            <div class="stat-card">
+              <h4>⭐ Produits Phares</h4>
+              <span id="featuredCount">0</span>
+            </div>
+          </div>
+
+          <h4>Liste des produits (cliquez pour éditer)</h4>
+          <div id="adminList" class="admin-list" role="region" aria-label="Liste produits admin"></div>
+
+          <div class="admin-actions">
+            <button id="exportBtn" class="btn ghost">📤 Exporter les produits</button>
+            <button id="importBtn" class="btn ghost">📥 Importer des produits</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" />
+          </div>
+        </div>
+
+        <!-- Onglet Analytics -->
+        <div id="adminAnalytics" class="admin-tab-content">
+          <h3>📊 Analytics et Statistiques</h3>
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <h4>Performance Générale</h4>
+              <div class="analytics-stats">
+                <div class="analytics-stat">
+                  <span class="stat-value" id="totalVisits">0</span>
+                  <span class="stat-label">Visites totales</span>
+                </div>
+                <div class="analytics-stat">
+                  <span class="stat-value" id="conversionRate">0%</span>
+                  <span class="stat-label">Taux de conversion</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="analytics-card">
+              <h4>Produits les plus vus</h4>
+              <div id="topProducts" class="top-products-list"></div>
+            </div>
+          </div>
+          
+          <div class="analytics-section">
+            <h4>Détail des Clicks</h4>
+            <div id="clickAnalytics" class="analytics-list"></div>
+          </div>
+        </div>
+
+        <!-- Onglet Avis -->
+        <div id="adminReviews" class="admin-tab-content">
+          <h3>💬 Gestion des Avis Clients</h3>
+          <div class="reviews-stats">
+            <div class="stat-card">
+              <h4>⭐ Note moyenne</h4>
+              <span id="averageRating">0.0</span>
+            </div>
+            <div class="stat-card">
+              <h4>📝 Total avis</h4>
+              <span id="totalReviews">0</span>
+            </div>
+            <div class="stat-card">
+              <h4>👍 Avis 5 étoiles</h4>
+              <span id="fiveStarReviews">0</span>
+            </div>
+          </div>
+          
+          <div class="reviews-list" id="adminReviewsList">
+            <!-- Avis générés ici -->
+          </div>
+        </div>
+
+        <div class="admin-footer">
+          <button id="logoutBtn" class="btn">🚪 Se déconnecter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-sections">
+        <div class="footer-section">
+          <h3>PipChi Boutique</h3>
+          <p>La qualité est la vie, le Service Est L'âme; Votre Satisfaction Est Garantie.</p>
+        </div>
+        <div class="footer-section">
+          <h3>Liens rapides</h3>
+          <a href="#articles">Produits</a>
+          <a href="#promo">Promotions</a>
+          <a href="#contact">Contact</a>
+        </div>
+        <div class="footer-section">
+          <h3>Légal</h3>
+          <a href="#">Mentions légales</a>
+          <a href="#">Politique de confidentialité</a>
+          <a href="#">CGV</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2024 PipChi Boutique | Tous droits réservés</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scroll-to-Top Button amélioré -->
+  <button id="scrollTopBtn" class="scroll-top-btn" aria-label="Retour en haut">↑</button>
+
+  <script src="script.js"></script>
+  
+  <!-- Bannière cookies propre -->
+<div id="cookie-banner" style="display: none;">
+  🍪 Ce site utilise des cookies pour améliorer votre expérience.
+  <button id="accept-cookies">J'accepte</button>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.getElementById('cookie-banner');
+    const button = document.getElementById('accept-cookies');
+
+    if (!localStorage.getItem('cookiesAccepted')) {
+      banner.style.display = 'block';
+    }
+
+    button.addEventListener('click', () => {
+      localStorage.setItem('cookiesAccepted', 'true');
+      banner.style.display = 'none';
+    });
+  });
+</script>
+
+</body>
+</html>
