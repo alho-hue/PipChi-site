@@ -1,5 +1,26 @@
 <!DOCTYPE html>
 <html lang="fr">
+  <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+<script>
+  // 🟢 CONFIGURATION FIREBASE - AVEC VOS CLÉS
+  const firebaseConfig = {
+    apiKey: "AIzaSyAd-Lm95U-wz7cJ1pJMvBigrRjY5U2kG_o",
+    authDomain: "pipchi-boutique.firebaseapp.com",
+    projectId: "pipchi-boutique",
+    storageBucket: "pipchi-boutique.firebasestorage.app",
+    messagingSenderId: "687737382079",
+    appId: "1:687737382079:web:a08dffdb0887a6edfe520a"
+  };
+
+  // Initialiser Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  
+  console.log('✅ Firebase initialisé !');
+</script>
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>

@@ -530,8 +530,59 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------- PRODUITS & ADMIN ---------- */
-  const ADMIN_PASSWORD = "pipchi123";
-  let products = [];
+const ADMIN_PASSWORD = "pipchi123";
+let products = [];
+
+/* ---------- FIREBASE FUNCTIONS ---------- */
+
+// Charger les produits depuis Firebase
+async function loadProductsFromFirebase() {
+  try {
+    console.log('🔄 Chargement depuis Firebase...');
+    const snapshot = await db.collection('products').get();
+    products = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    console.log('✅ Produits chargés:', products.length);
+    return true;
+  } catch (error) {
+    console.error('❌ Erreur Firebase:', error);
+    return false;
+  }
+}
+
+// Sauvegarder un produit
+async function saveProductToFirebase(product) {
+  try {
+    if (product.firebaseId) {
+      // Mise à jour
+      await db.collection('products').doc(product.firebaseId).update(product);
+    } else {
+      // Nouveau produit
+      const docRef = await db.collection('products').add(product);
+      product.firebaseId = docRef.id;
+    }
+    console.log('✅ Produit sauvegardé Firebase');
+    return true;
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde:', error);
+    return false;
+  }
+}
+
+// Synchroniser tous les produits
+async function syncProductsToFirebase() {
+  try {
+    for (const product of products) {
+      await saveProductToFirebase(product);
+    }
+    console.log('✅ Tous les produits synchronisés');
+  } catch (error) {
+    console.error('❌ Erreur synchronisation:', error);
+  }
+}
+
   let currentPage = 1;
   const productsPerPage = 9;
 
@@ -547,30 +598,47 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'p_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5); 
   }
   
-  function safeLoad(){ 
-    try{ 
+  async function safeLoad(){ 
+  try{ 
+    // Essayer Firebase d'abord
+    const firebaseSuccess = await loadProductsFromFirebase();
+    
+    if (!firebaseSuccess || products.length === 0) {
+      // Fallback vers localStorage
       const stored = localStorage.getItem('pipchi_products');
       products = stored ? JSON.parse(stored) : [];
-      return true;
-    }catch(e){ 
-      console.error('Erreur chargement produits:', e);
-      products = []; 
-      return false;
-    } 
-  }
-  
-  function safeSave(){ 
-    try {
-      localStorage.setItem('pipchi_products', JSON.stringify(products));
-      updateAdminStats();
-      cleanAnalytics();
-      return true;
-    } catch (e) {
-      console.error('Erreur sauvegarde produits:', e);
-      showNotification('❌ Erreur de sauvegarde des données', 'error');
-      return false;
+      
+      // Synchroniser vers Firebase si données locales existent
+      if (products.length > 0) {
+        await syncProductsToFirebase();
+      }
     }
+    return true;
+  }catch(e){ 
+    console.error('Erreur chargement:', e);
+    products = []; 
+    return false;
+  } 
+}
+  
+  async function safeSave(){ 
+  try {
+    // Sauvegarde locale
+    localStorage.setItem('pipchi_products', JSON.stringify(products));
+    
+    // Sauvegarde Firebase
+    await syncProductsToFirebase();
+    
+    updateAdminStats();
+    cleanAnalytics();
+    showNotification('✅ Modifications sauvegardées pour tous !', 'success');
+    return true;
+  } catch (e) {
+    console.error('Erreur sauvegarde:', e);
+    showNotification('❌ Erreur de sauvegarde', 'error');
+    return false;
   }
+}
 
   function seedDemo(){
     if (products && products.length > 0) return;
