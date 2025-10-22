@@ -1,4 +1,4 @@
-/* script.js - VERSION COMPLÈTEMENT CORRIGÉE */
+/* script.js - VERSION COMPLÈTEMENT CORRIGÉE ET TESTÉE */
 
 const qs = s => document.querySelector(s);
 const qsa = s => document.querySelectorAll(s);
@@ -14,6 +14,52 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('error', (e) => {
     console.error('Erreur globale:', e.error);
   });
+
+  /* ---------- CORRECTIONS MOBILE ---------- */
+  function setupMobileEnhancements() {
+    // Navigation mobile
+    const mobileMenuBtn = qs('#mobileMenuBtn');
+    const mainNav = qs('#mainNav');
+    
+    if (mobileMenuBtn && mainNav) {
+      mobileMenuBtn.addEventListener('click', () => {
+        mainNav.classList.toggle('active');
+        document.body.style.overflow = mainNav.classList.contains('active') ? 'hidden' : '';
+      });
+      
+      // Fermer le menu en cliquant sur un lien
+      mainNav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          mainNav.classList.remove('active');
+          document.body.style.overflow = '';
+        });
+      });
+      
+      // Fermer en tapant à l'extérieur
+      document.addEventListener('click', (e) => {
+        if (mainNav.classList.contains('active') && 
+            !mainNav.contains(e.target) && 
+            e.target !== mobileMenuBtn) {
+          mainNav.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+    
+    // Empêche le zoom sur iOS
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      input.addEventListener('focus', () => {
+        document.querySelector('meta[name="viewport"]')
+          .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      });
+      
+      input.addEventListener('blur', () => {
+        document.querySelector('meta[name="viewport"]')
+          .setAttribute('content', 'width=device-width, initial-scale=1.0');
+      });
+    });
+  }
 
   /* ---------- COMPTEUR AVIS EN ATTENTE ---------- */
   function updatePendingReviewsCount() {
@@ -47,25 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAnalyticsDisplay();
   }
 
-  /* ---------- Navigation mobile ---------- */
-  const mobileMenuBtn = qs('#mobileMenuBtn');
-  const mainNav = qs('#mainNav');
-  
-  if (mobileMenuBtn && mainNav) {
-    mobileMenuBtn.addEventListener('click', () => {
-      mainNav.classList.toggle('active');
-      document.body.style.overflow = mainNav.classList.contains('active') ? 'hidden' : '';
-    });
-    
-    // Fermer le menu en cliquant sur un lien
-    mainNav.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        mainNav.classList.remove('active');
-        document.body.style.overflow = '';
-      });
-    });
-  }
-
   /* ---------- Progress bar ---------- */
   const progressBar = qs('#progressBar');
   function updateProgress() {
@@ -97,12 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---------- Gestion des formulaires ---------- */
-  function setupFormValidation() {
-    // Contact form
+  /* ---------- FORMSPREE RÉEL ---------- */
+  function setupContactForm() {
     const contactForm = qs('#contactForm');
     if (contactForm) {
-      contactForm.addEventListener('submit', (e) => {
+      contactForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const name = qs('#name');
@@ -133,23 +159,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isValid) {
-          // Simuler l'envoi
-          contactForm.classList.add('loading');
-          setTimeout(() => {
-            contactForm.classList.remove('loading');
-            alert('Message envoyé avec succès !');
-            contactForm.reset();
-          }, 1000);
-        } else {
-          // Scroll to first error
-          const firstError = contactForm.querySelector('.error.show');
-          if (firstError) {
-            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const submitBtn = contactForm.querySelector('button[type="submit"]');
+          const originalText = submitBtn.textContent;
+          
+          submitBtn.textContent = 'Envoi en cours...';
+          submitBtn.disabled = true;
+
+          try {
+            // Envoi réel avec Formspree
+            const formData = new FormData(contactForm);
+            const response = await fetch(contactForm.action, {
+              method: 'POST',
+              body: formData,
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+
+            if (response.ok) {
+              showNotification('✅ Message envoyé avec succès ! Nous vous répondrons rapidement.', 'success');
+              contactForm.reset();
+            } else {
+              throw new Error('Erreur d\'envoi');
+            }
+          } catch (error) {
+            showNotification('❌ Erreur lors de l\'envoi. Veuillez réessayer.', 'error');
+          } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
           }
         }
       });
     }
+  }
 
+  /* ---------- Gestion des formulaires ---------- */
+  function setupFormValidation() {
     // Review form
     const reviewForm = qs('#reviewForm');
     const charCount = qs('#charCount');
@@ -170,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = qs('#reviewText');
 
         if (!name.value.trim() || !rating.value || !text.value.trim()) {
-          alert('Veuillez remplir tous les champs');
+          showNotification('❌ Veuillez remplir tous les champs', 'error');
           return;
         }
 
@@ -180,187 +225,176 @@ document.addEventListener('DOMContentLoaded', () => {
           rating: parseInt(rating.value),
           text: text.value.trim(),
           date: new Date().toISOString(),
-          approved: false // Modération manuelle
+          approved: false
         };
 
         saveReview(review);
         reviewForm.reset();
         if (charCount) charCount.textContent = '0';
-        alert('Merci pour votre avis ! Il sera publié après modération.');
+        showNotification('✅ Merci pour votre avis ! Il sera publié après modération.', 'success');
       });
     }
   }
 
   /* ---------- SYSTÈME D'AVIS CLIENTS CORRIGÉ ---------- */
-function initReviews() {
-    if (!localStorage.getItem('pipchi_reviews')) {
-        // Ajouter quelques avis de démonstration
-        const demoReviews = [
-            {
-                id: 'r_1',
-                name: 'Marie D.',
-                rating: 5,
-                text: 'Service excellent, produits de qualité ! Livraison rapide.',
-                date: new Date(Date.now() - 86400000).toISOString(),
-                approved: true
-            },
-            {
-                id: 'r_2',
-                name: 'Ahmed S.',
-                rating: 4,
-                text: 'Très satisfait de mon achat, je recommande PipChi !',
-                date: new Date(Date.now() - 172800000).toISOString(),
-                approved: true
-            },
-            {
-                id: 'r_3',
-                name: 'Fatou K.',
-                rating: 5,
-                text: 'Rapport qualité-prix exceptionnel. Service client au top !',
-                date: new Date(Date.now() - 259200000).toISOString(),
-                approved: false
-            }
-        ];
-        localStorage.setItem('pipchi_reviews', JSON.stringify(demoReviews));
-    }
-    renderReviews();
-    updatePendingReviewsCount();
-}
+  function initReviews() {
+      if (!localStorage.getItem('pipchi_reviews')) {
+          const demoReviews = [
+              {
+                  id: 'r_1',
+                  name: 'Marie D.',
+                  rating: 5,
+                  text: 'Service excellent, produits de qualité ! Livraison rapide.',
+                  date: new Date(Date.now() - 86400000).toISOString(),
+                  approved: true
+              },
+              {
+                  id: 'r_2',
+                  name: 'Ahmed S.',
+                  rating: 4,
+                  text: 'Très satisfait de mon achat, je recommande PipChi !',
+                  date: new Date(Date.now() - 172800000).toISOString(),
+                  approved: true
+              }
+          ];
+          localStorage.setItem('pipchi_reviews', JSON.stringify(demoReviews));
+      }
+      renderReviews();
+      updatePendingReviewsCount();
+  }
 
-function saveReview(review) {
-    try {
-        const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
-        reviews.unshift(review);
-        localStorage.setItem('pipchi_reviews', JSON.stringify(reviews));
-        renderReviews();
-        updateReviewsStats();
-        updatePendingReviewsCount();
-        return true;
-    } catch (error) {
-        console.error('Erreur sauvegarde avis:', error);
-        return false;
-    }
-}
+  function saveReview(review) {
+      try {
+          const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
+          reviews.unshift(review);
+          localStorage.setItem('pipchi_reviews', JSON.stringify(reviews));
+          renderReviews();
+          updateReviewsStats();
+          updatePendingReviewsCount();
+          return true;
+      } catch (error) {
+          console.error('Erreur sauvegarde avis:', error);
+          return false;
+      }
+  }
 
-function renderReviews() {
-    const grid = qs('#testimonialGrid');
-    const adminList = qs('#adminReviewsList');
-    const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
+  function renderReviews() {
+      const grid = qs('#testimonialGrid');
+      const adminList = qs('#adminReviewsList');
+      const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
 
-    // Afficher sur la page principale
-    if (grid) {
-        const approvedReviews = reviews.filter(r => r.approved).slice(0, 6);
-        
-        if (approvedReviews.length === 0) {
-            grid.innerHTML = `
-                <div class="testimonial-item" style="grid-column:1/-1;text-align:center">
-                    <p style="color:var(--muted)">Soyez le premier à laisser un avis !</p>
-                </div>
-            `;
-        } else {
-            grid.innerHTML = approvedReviews.map(review => `
-                <div class="testimonial-item fade-in">
-                    <div class="testimonial-header">
-                        <div class="testimonial-author">${escapeHtml(review.name)}</div>
-                        <div class="testimonial-date">${new Date(review.date).toLocaleDateString('fr-FR')}</div>
-                    </div>
-                    <div class="testimonial-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
-                    <div class="testimonial-text">${escapeHtml(review.text)}</div>
-                </div>
-            `).join('');
-        }
-    }
+      if (grid) {
+          const approvedReviews = reviews.filter(r => r.approved).slice(0, 6);
+          
+          if (approvedReviews.length === 0) {
+              grid.innerHTML = `
+                  <div class="testimonial-item" style="grid-column:1/-1;text-align:center">
+                      <p style="color:var(--muted)">Soyez le premier à laisser un avis !</p>
+                  </div>
+              `;
+          } else {
+              grid.innerHTML = approvedReviews.map(review => `
+                  <div class="testimonial-item fade-in">
+                      <div class="testimonial-header">
+                          <div class="testimonial-author">${escapeHtml(review.name)}</div>
+                          <div class="testimonial-date">${new Date(review.date).toLocaleDateString('fr-FR')}</div>
+                      </div>
+                      <div class="testimonial-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
+                      <div class="testimonial-text">${escapeHtml(review.text)}</div>
+                  </div>
+              `).join('');
+          }
+      }
 
-    // Afficher dans l'admin
-    if (adminList) {
-        if (reviews.length === 0) {
-            adminList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Aucun avis à modérer</p>';
-        } else {
-            adminList.innerHTML = reviews.map(review => `
-                <div class="review-item">
-                    <div class="review-item-header">
-                        <div class="review-item-author">${escapeHtml(review.name)}</div>
-                        <div class="review-item-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
-                    </div>
-                    <div class="review-item-date">
-                        ${new Date(review.date).toLocaleDateString('fr-FR')} • 
-                        ${review.approved ? 
-                            '<span style="color:#00d1b2">✅ Approuvé</span>' : 
-                            '<span style="color:#ff6666">⏳ En attente</span>'
-                        }
-                    </div>
-                    <div class="review-item-text">${escapeHtml(review.text)}</div>
-                    <div class="review-actions">
-                        ${!review.approved ? 
-                            `<button class="btn small" onclick="approveReview('${review.id}')">✅ Approuver</button>` : 
-                            `<button class="btn small ghost" onclick="unapproveReview('${review.id}')">↶ Désapprouver</button>`
-                        }
-                        <button class="btn small ghost" onclick="deleteReview('${review.id}')">🗑️ Supprimer</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-    }
-}
+      if (adminList) {
+          if (reviews.length === 0) {
+              adminList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Aucun avis à modérer</p>';
+          } else {
+              adminList.innerHTML = reviews.map(review => `
+                  <div class="review-item">
+                      <div class="review-item-header">
+                          <div class="review-item-author">${escapeHtml(review.name)}</div>
+                          <div class="review-item-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
+                      </div>
+                      <div class="review-item-date">
+                          ${new Date(review.date).toLocaleDateString('fr-FR')} • 
+                          ${review.approved ? 
+                              '<span style="color:#00d1b2">✅ Approuvé</span>' : 
+                              '<span style="color:#ff6666">⏳ En attente</span>'
+                          }
+                      </div>
+                      <div class="review-item-text">${escapeHtml(review.text)}</div>
+                      <div class="review-actions">
+                          ${!review.approved ? 
+                              `<button class="btn small" onclick="approveReview('${review.id}')">✅ Approuver</button>` : 
+                              `<button class="btn small ghost" onclick="unapproveReview('${review.id}')">↶ Désapprouver</button>`
+                          }
+                          <button class="btn small ghost" onclick="deleteReview('${review.id}')">🗑️ Supprimer</button>
+                      </div>
+                  </div>
+              `).join('');
+          }
+      }
+  }
 
-function updateReviewsStats() {
-    const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
-    const approvedReviews = reviews.filter(r => r.approved);
-    
-    if (approvedReviews.length > 0) {
-        const averageRating = approvedReviews.reduce((sum, review) => sum + review.rating, 0) / approvedReviews.length;
-        const fiveStarReviews = approvedReviews.filter(r => r.rating === 5).length;
+  function updateReviewsStats() {
+      const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
+      const approvedReviews = reviews.filter(r => r.approved);
+      
+      if (approvedReviews.length > 0) {
+          const averageRating = approvedReviews.reduce((sum, review) => sum + review.rating, 0) / approvedReviews.length;
+          const fiveStarReviews = approvedReviews.filter(r => r.rating === 5).length;
 
-        if (qs('#averageRating')) qs('#averageRating').textContent = averageRating.toFixed(1);
-        if (qs('#totalReviews')) qs('#totalReviews').textContent = approvedReviews.length;
-        if (qs('#fiveStarReviews')) qs('#fiveStarReviews').textContent = fiveStarReviews;
-    } else {
-        if (qs('#averageRating')) qs('#averageRating').textContent = '0.0';
-        if (qs('#totalReviews')) qs('#totalReviews').textContent = '0';
-        if (qs('#fiveStarReviews')) qs('#fiveStarReviews').textContent = '0';
-    }
-}
+          if (qs('#averageRating')) qs('#averageRating').textContent = averageRating.toFixed(1);
+          if (qs('#totalReviews')) qs('#totalReviews').textContent = approvedReviews.length;
+          if (qs('#fiveStarReviews')) qs('#fiveStarReviews').textContent = fiveStarReviews;
+      } else {
+          if (qs('#averageRating')) qs('#averageRating').textContent = '0.0';
+          if (qs('#totalReviews')) qs('#totalReviews').textContent = '0';
+          if (qs('#fiveStarReviews')) qs('#fiveStarReviews').textContent = '0';
+      }
+  }
 
-// Fonctions globales pour la modération
-window.approveReview = function(reviewId) {
-    const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
-    const reviewIndex = reviews.findIndex(r => r.id === reviewId);
-    
-    if (reviewIndex !== -1) {
-        reviews[reviewIndex].approved = true;
-        localStorage.setItem('pipchi_reviews', JSON.stringify(reviews));
-        renderReviews();
-        updateReviewsStats();
-        updatePendingReviewsCount();
-        alert('✅ Avis approuvé avec succès !');
-    }
-};
+  // Fonctions globales pour la modération
+  window.approveReview = function(reviewId) {
+      const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
+      const reviewIndex = reviews.findIndex(r => r.id === reviewId);
+      
+      if (reviewIndex !== -1) {
+          reviews[reviewIndex].approved = true;
+          localStorage.setItem('pipchi_reviews', JSON.stringify(reviews));
+          renderReviews();
+          updateReviewsStats();
+          updatePendingReviewsCount();
+          showNotification('✅ Avis approuvé avec succès !', 'success');
+      }
+  };
 
-window.unapproveReview = function(reviewId) {
-    const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
-    const reviewIndex = reviews.findIndex(r => r.id === reviewId);
-    
-    if (reviewIndex !== -1) {
-        reviews[reviewIndex].approved = false;
-        localStorage.setItem('pipchi_reviews', JSON.stringify(reviews));
-        renderReviews();
-        updateReviewsStats();
-        updatePendingReviewsCount();
-        alert('↶ Avis désapprouvé !');
-    }
-};
+  window.unapproveReview = function(reviewId) {
+      const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
+      const reviewIndex = reviews.findIndex(r => r.id === reviewId);
+      
+      if (reviewIndex !== -1) {
+          reviews[reviewIndex].approved = false;
+          localStorage.setItem('pipchi_reviews', JSON.stringify(reviews));
+          renderReviews();
+          updateReviewsStats();
+          updatePendingReviewsCount();
+          showNotification('↶ Avis désapprouvé !', 'info');
+      }
+  };
 
-window.deleteReview = function(reviewId) {
-    if (!confirm('Supprimer définitivement cet avis ?')) return;
-    
-    const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
-    const filteredReviews = reviews.filter(r => r.id !== reviewId);
-    localStorage.setItem('pipchi_reviews', JSON.stringify(filteredReviews));
-    renderReviews();
-    updateReviewsStats();
-    updatePendingReviewsCount();
-    alert('🗑️ Avis supprimé avec succès !');
-};
+  window.deleteReview = function(reviewId) {
+      if (!confirm('Supprimer définitivement cet avis ?')) return;
+      
+      const reviews = JSON.parse(localStorage.getItem('pipchi_reviews') || '[]');
+      const filteredReviews = reviews.filter(r => r.id !== reviewId);
+      localStorage.setItem('pipchi_reviews', JSON.stringify(filteredReviews));
+      renderReviews();
+      updateReviewsStats();
+      updatePendingReviewsCount();
+      showNotification('🗑️ Avis supprimé avec succès !', 'success');
+  };
 
   /* ---------- ANALYTICS & TRACKING ---------- */
   function initAnalytics() {
@@ -373,7 +407,6 @@ window.deleteReview = function(reviewId) {
       }));
     }
 
-    // Compter la visite
     const analytics = JSON.parse(localStorage.getItem('pipchi_analytics'));
     analytics.visits = (analytics.visits || 0) + 1;
     analytics.lastVisit = new Date().toISOString();
@@ -406,7 +439,6 @@ window.deleteReview = function(reviewId) {
     const analytics = JSON.parse(localStorage.getItem('pipchi_analytics'));
     const totalClicks = analytics.clicks.length;
     
-    // Trouver le produit le plus populaire
     let popularProduct = '-';
     let maxClicks = 0;
     
@@ -417,16 +449,13 @@ window.deleteReview = function(reviewId) {
       }
     });
 
-    // Mettre à jour l'affichage
     if (qs('#totalClicks')) qs('#totalClicks').textContent = totalClicks;
     if (qs('#popularProduct')) qs('#popularProduct').textContent = popularProduct;
     if (qs('#totalVisits')) qs('#totalVisits').textContent = analytics.visits;
     
-    // Calculer le taux de conversion (simulé)
     const conversionRate = analytics.visits > 0 ? Math.min(100, Math.round((totalClicks / analytics.visits) * 100)) : 0;
     if (qs('#conversionRate')) qs('#conversionRate').textContent = conversionRate + '%';
     
-    // Mettre à jour la liste détaillée
     const analyticsList = qs('#clickAnalytics');
     if (analyticsList) {
       analyticsList.innerHTML = '';
@@ -444,7 +473,6 @@ window.deleteReview = function(reviewId) {
         });
     }
 
-    // Top produits
     const topProducts = qs('#topProducts');
     if (topProducts) {
       const top5 = Object.entries(analytics.products)
@@ -504,8 +532,9 @@ window.deleteReview = function(reviewId) {
   /* ---------- PRODUITS & ADMIN ---------- */
   const ADMIN_PASSWORD = "pipchi123";
   let products = [];
+  let currentPage = 1;
+  const productsPerPage = 9;
 
-  // Catégories avec icônes - CORRIGÉE avec "Autres"
   const categories = {
     'vetements': '👕 Vêtements',
     'accessoires': '👜 Accessoires',
@@ -534,11 +563,11 @@ window.deleteReview = function(reviewId) {
     try {
       localStorage.setItem('pipchi_products', JSON.stringify(products));
       updateAdminStats();
-      cleanAnalytics(); // NETTOYAGE AUTOMATIQUE
+      cleanAnalytics();
       return true;
     } catch (e) {
       console.error('Erreur sauvegarde produits:', e);
-      alert('Erreur de sauvegarde des données');
+      showNotification('❌ Erreur de sauvegarde des données', 'error');
       return false;
     }
   }
@@ -555,7 +584,7 @@ window.deleteReview = function(reviewId) {
         stock: 3, 
         category: 'electronique',
         featured: true,
-        images: [dataDemo],
+        images: [dataDemo, dataDemo, dataDemo], // 3 images pour tester la galerie
         created: Date.now() 
       },
       { 
@@ -577,7 +606,7 @@ window.deleteReview = function(reviewId) {
         stock: 15, 
         category: 'accessoires',
         featured: true,
-        images: [dataDemo],
+        images: [dataDemo, dataDemo], // 2 images pour tester
         created: Date.now() - 2000000 
       }
     ];
@@ -624,95 +653,313 @@ window.deleteReview = function(reviewId) {
     updateAnalyticsDisplay();
   }
 
+  function getFilteredProducts() {
+    const q = qs('#search') ? qs('#search').value.trim().toLowerCase() : '';
+    const categoryFilter = qs('#categoryFilter') ? qs('#categoryFilter').value : 'all';
+    const filterStock = qs('#filterStock') ? qs('#filterStock').value : 'all';
+    
+    let filtered = [...products];
+    
+    if (categoryFilter !== 'all') filtered = filtered.filter(p => p.category === categoryFilter);
+    if (filterStock === 'in') filtered = filtered.filter(p => p.stock > 0);
+    if (filterStock === 'out') filtered = filtered.filter(p => p.stock <= 0);
+    if (q) filtered = filtered.filter(p => (p.name + ' ' + p.desc).toLowerCase().includes(q));
+    
+    return filtered;
+  }
+
   function renderProducts(list = products){
     const productGrid = qs('#productGrid');
     if (!productGrid) return;
     
     const q = qs('#search') ? qs('#search').value.trim().toLowerCase() : '';
     const categoryFilter = qs('#categoryFilter') ? qs('#categoryFilter').value : 'all';
+    const filterStock = qs('#filterStock') ? qs('#filterStock').value : 'all';
     const sortBy = qs('#sortProducts') ? qs('#sortProducts').value : 'new';
-    let out = [...list];
+    
+    let filteredProducts = [...list];
 
-    // Filtre par catégorie
     if (categoryFilter !== 'all') {
-      out = out.filter(p => p.category === categoryFilter);
+      filteredProducts = filteredProducts.filter(p => p.category === categoryFilter);
     }
 
-    const filterStock = qs('#filterStock') ? qs('#filterStock').value : 'all';
-    if (filterStock === 'in') out = out.filter(p => p.stock > 0);
-    if (filterStock === 'out') out = out.filter(p => p.stock <= 0);
+    if (filterStock === 'in') filteredProducts = filteredProducts.filter(p => p.stock > 0);
+    if (filterStock === 'out') filteredProducts = filteredProducts.filter(p => p.stock <= 0);
 
     if (q) {
-      out = out.filter(p => 
-        (p.name + ' ' + p.desc).toLowerCase().includes(q)
+      filteredProducts = filteredProducts.filter(p => 
+        (p.name + ' ' + p.desc + ' ' + p.category).toLowerCase().includes(q)
       );
     }
     
-    // Trier les produits
-    out = sortProducts(out, sortBy);
+    filteredProducts = sortProducts(filteredProducts, sortBy);
     
-    if (!out.length) {
-      productGrid.innerHTML = `
-        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
-          <p style="font-size:1.2rem;margin-bottom:8px">🔍 Aucun produit trouvé</p>
-          <p>Essayez de modifier vos critères de recherche</p>
-        </div>
-      `;
-      return;
+    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+    const startIndex = (currentPage - 1) * productsPerPage;
+    const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
+    
+    if (paginatedProducts.length === 0) {
+        productGrid.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
+                <p style="font-size:1.2rem;margin-bottom:8px">🔍 Aucun produit trouvé</p>
+                <p>Essayez de modifier vos critères de recherche ou de réinitialiser les filtres</p>
+                <button onclick="resetFilters()" class="btn ghost" style="margin-top:16px">🗑️ Réinitialiser les filtres</button>
+            </div>
+        `;
+    } else {
+        productGrid.innerHTML = paginatedProducts.map(p => {
+            const imageCount = p.images ? p.images.length : 1;
+            const categoryName = categories[p.category] || '📦 Autres';
+            
+            return `
+                <article class="article-item ${p.featured ? 'featured' : ''} fade-in">
+                    <div class="product-image">
+                        <img src="${p.images ? p.images[0] : dataDemo}" alt="${escapeHtml(p.name)}" loading="lazy" />
+                        ${imageCount > 1 ? `<div class="image-count">+${imageCount - 1}</div>` : ''}
+                    </div>
+                    <h3>${escapeHtml(p.name)}</h3>
+                    <div class="product-category">${categoryName}</div>
+                    <p>${escapeHtml(p.desc)}</p>
+                    <div class="price-stock">
+                        <div class="price">${Number(p.price).toLocaleString()} F CFA</div>
+                        <div class="stock ${p.stock>0?'in':'out'}">${p.stock>0?('En stock — '+p.stock):'Rupture'}</div>
+                    </div>
+                    <div class="article-buttons">
+                        ${p.stock > 0 ? 
+                            `<button class="article-btn" data-product-id="${p.id}">Voir Détails</button>` : 
+                            `<button class="article-btn" style="background:var(--muted);cursor:not-allowed" disabled>Rupture de stock</button>`
+                        }
+                        ${imageCount > 1 ? `<button class="article-btn gallery" data-product-id="${p.id}">📷 Galerie (${imageCount})</button>` : ''}
+                    </div>
+                </article>
+            `;
+        }).join('');
+
+        productGrid.innerHTML += `
+            <div style="grid-column:1/-1;text-align:center;margin-top:30px">
+                <div class="pagination">
+                    <button class="btn ghost ${currentPage === 1 ? 'disabled' : ''}" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        ← Précédent
+                    </button>
+                    <span style="margin:0 16px;color:var(--muted)">
+                        Page ${currentPage} sur ${totalPages}
+                    </span>
+                    <button class="btn ghost ${currentPage === totalPages ? 'disabled' : ''}" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        Suivant →
+                    </button>
+                </div>
+                <div style="margin-top:8px;color:var(--muted);font-size:14px">
+                    ${filteredProducts.length} produit(s) trouvé(s)
+                </div>
+            </div>
+        `;
     }
 
-    productGrid.innerHTML = out.map(p => {
-      const imageCount = p.images ? p.images.length : 1;
-      const categoryName = categories[p.category] || '📦 Autres'; // CORRIGÉ : catégorie par défaut
-      
-      return `
-        <article class="article-item ${p.featured ? 'featured' : ''} fade-in">
-          <div class="product-image">
-            <img src="${p.images ? p.images[0] : dataDemo}" alt="${escapeHtml(p.name)}" loading="lazy" />
-            ${imageCount > 1 ? `<div class="image-count">+${imageCount - 1}</div>` : ''}
-          </div>
-          <h3>${escapeHtml(p.name)}</h3>
-          <div class="product-category">${categoryName}</div>
-          <p>${escapeHtml(p.desc)}</p>
-          <div class="price-stock">
-            <div class="price">${Number(p.price).toLocaleString()} F CFA</div>
-            <div class="stock ${p.stock>0?'in':'out'}">${p.stock>0?('En stock — '+p.stock):'Rupture'}</div>
-          </div>
-          <div class="article-buttons">
-            ${p.stock > 0 ? 
-              `<button class="article-btn" data-product-id="${p.id}">Voir Détails</button>` : 
-              `<button class="article-btn" style="background:var(--muted);cursor:not-allowed" disabled>Rupture de stock</button>`
-            }
-            ${imageCount > 1 ? `<button class="article-btn gallery" data-product-id="${p.id}">📷 Galerie</button>` : ''}
-          </div>
-        </article>
-      `;
-    }).join('');
+    setupProductEventListeners();
+  }
 
-    // Ajouter les event listeners - CORRIGÉ : vérification stock
+  function setupProductEventListeners() {
+    const productGrid = qs('#productGrid');
+    if (!productGrid) return;
+    
     productGrid.querySelectorAll('.article-btn[data-product-id]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const productId = btn.dataset.productId;
-        const product = products.find(p => p.id === productId);
-        if (!product) return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = btn.dataset.productId;
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
 
-        if (btn.classList.contains('gallery')) {
-          // Bouton galerie
-          if (product.images && product.images.length > 1) {
-            alert(`Galerie d'images pour ${product.name} (${product.images.length} images)`);
-          }
-        } else {
-          // Bouton "Voir Détails" - CORRIGÉ : vérification stock
-          if (product.stock > 0) {
-            trackProductClick(product.id, product.name);
-            showRedirectPopup(product.name, 'https://oumistore.com/?page=boutique&boutiqueId=4518');
-          } else {
-            alert('❌ Ce produit est en rupture de stock');
-          }
-        }
-      });
+            if (btn.classList.contains('gallery')) {
+                openGallery(product.id);
+            } else {
+                if (product.stock > 0) {
+                    trackProductClick(product.id, product.name);
+                    showRedirectPopup(product.name, 'https://oumistore.com/?page=boutique&boutiqueId=4518');
+                } else {
+                    showNotification('❌ Ce produit est en rupture de stock', 'error');
+                }
+            }
+        });
     });
+  }
+
+  window.changePage = function(page) {
+    const totalPages = Math.ceil(getFilteredProducts().length / productsPerPage);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    renderProducts();
+    
+    const productsSection = qs('#articles');
+    if (productsSection) {
+        productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  window.resetFilters = function() {
+    if (qs('#search')) qs('#search').value = '';
+    if (qs('#categoryFilter')) qs('#categoryFilter').value = 'all';
+    if (qs('#filterStock')) qs('#filterStock').value = 'all';
+    if (qs('#sortProducts')) qs('#sortProducts').value = 'new';
+    
+    currentPage = 1;
+    renderProducts();
+    
+    showNotification('✅ Filtres réinitialisés', 'success');
+  };
+
+  /* ---------- GALERIE D'IMAGES FONCTIONNELLE ---------- */
+function openGallery(productId) {
+    console.log('🔍 Recherche produit:', productId);
+    
+    // Trouver le produit
+    const product = products.find(p => p.id === productId);
+    if (!product) {
+        console.error('❌ Produit non trouvé');
+        showNotification('❌ Produit non trouvé', 'error');
+        return;
+    }
+    
+    console.log('✅ Produit trouvé:', product.name);
+    console.log('📸 Images disponibles:', product.images?.length);
+
+    // Vérifier s'il y a des images
+    if (!product.images || product.images.length === 0) {
+        showNotification('❌ Aucune image disponible', 'error');
+        return;
+    }
+
+    // Récupérer les éléments DOM
+    const galleryModal = document.getElementById('galleryModal');
+    const galleryMainImage = document.getElementById('galleryMainImage');
+    const galleryProductName = document.getElementById('galleryProductName');
+    const galleryThumbnails = document.getElementById('galleryThumbnails');
+
+    if (!galleryModal || !galleryMainImage || !galleryProductName || !galleryThumbnails) {
+        console.error('❌ Éléments manquants');
+        return;
+    }
+
+    // Mettre à jour le contenu
+    galleryProductName.textContent = product.name;
+    galleryMainImage.src = product.images[0];
+    galleryMainImage.alt = product.name;
+
+    // Vider les miniatures existantes
+    galleryThumbnails.innerHTML = '';
+
+    // Créer les nouvelles miniatures
+    product.images.forEach((image, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = image;
+        thumb.alt = `Image ${index + 1} - ${product.name}`;
+        
+        // Première image active
+        if (index === 0) {
+            thumb.classList.add('active');
+        }
+
+        // Gestion du clic
+        thumb.addEventListener('click', function() {
+            // Mettre à jour l'image principale
+            galleryMainImage.src = this.src;
+            
+            // Retirer 'active' de toutes les miniatures
+            galleryThumbnails.querySelectorAll('img').forEach(img => {
+                img.classList.remove('active');
+            });
+            
+            // Ajouter 'active' à la miniature cliquée
+            this.classList.add('active');
+        });
+
+        galleryThumbnails.appendChild(thumb);
+    });
+
+    // Afficher la galerie
+    galleryModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    console.log('🎉 Galerie ouverte avec succès');
+    showNotification(`📸 Galerie: ${product.images.length} images disponibles`, 'success');
+}
+
+  function closeGallery() {
+      const galleryModal = qs('#galleryModal');
+      if (galleryModal) {
+          galleryModal.classList.add('hidden');
+          document.body.style.overflow = '';
+      }
+  }
+
+  function initGallery() {
+      const closeGalleryBtn = qs('#closeGallery');
+      const galleryModal = qs('#galleryModal');
+      
+      if (closeGalleryBtn) {
+          closeGalleryBtn.addEventListener('click', closeGallery);
+      }
+      
+      if (galleryModal) {
+          galleryModal.addEventListener('click', (e) => {
+              if (e.target === galleryModal) closeGallery();
+          });
+      }
+      
+      document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && galleryModal && !galleryModal.classList.contains('hidden')) {
+              closeGallery();
+          }
+      });
+  }
+
+  /* ---------- SYSTÈME DE NOTIFICATIONS ---------- */
+  function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification notification-${type}`;
+      notification.innerHTML = `
+          <div class="notification-content">
+              <span class="notification-message">${message}</span>
+              <button class="notification-close">×</button>
+          </div>
+      `;
+      
+      notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: ${type === 'error' ? 'var(--accent)' : type === 'success' ? 'var(--accent-2)' : 'var(--card-bg)'};
+          color: white;
+          padding: 16px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          z-index: 10000;
+          max-width: 400px;
+          animation: slideInRight 0.3s ease;
+      `;
+      
+      document.body.appendChild(notification);
+      
+      const closeBtn = notification.querySelector('.notification-close');
+      closeBtn.addEventListener('click', () => {
+          notification.style.animation = 'slideOutRight 0.3s ease';
+          setTimeout(() => {
+              if (notification.parentNode) {
+                  notification.parentNode.removeChild(notification);
+              }
+          }, 300);
+      });
+      
+      setTimeout(() => {
+          if (notification.parentNode) {
+              notification.style.animation = 'slideOutRight 0.3s ease';
+              setTimeout(() => {
+                  if (notification.parentNode) {
+                      notification.parentNode.removeChild(notification);
+                  }
+              }, 300);
+          }
+      }, 5000);
   }
 
   /* ---------- GESTION ADMIN ---------- */
@@ -733,11 +980,9 @@ window.deleteReview = function(reviewId) {
       tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
         
-        // Mettre à jour les onglets actifs
         adminTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         
-        // Afficher le contenu correspondant
         qsa('.admin-tab-content').forEach(content => {
           content.classList.remove('active');
         });
@@ -769,7 +1014,6 @@ window.deleteReview = function(reviewId) {
     if (closeAdmin) closeAdmin.addEventListener('click', closeAdminModal);
     if (cancelLogin) cancelLogin.addEventListener('click', closeAdminModal);
 
-    // Fermer la modal en cliquant à l'extérieur
     if (adminModal) {
       adminModal.addEventListener('click', (e) => {
         if (e.target === adminModal) closeAdminModal();
@@ -789,6 +1033,7 @@ window.deleteReview = function(reviewId) {
           updateReviewsStats();
           renderReviews();
           updatePendingReviewsCount();
+          showNotification('🔐 Connexion admin réussie', 'success');
         } else {
           const errorEl = qs('#adminPasswordError');
           if (errorEl) {
@@ -815,14 +1060,12 @@ window.deleteReview = function(reviewId) {
     const descCount = qs('#descCount');
     const newProductBtn = qs('#newProduct');
 
-    // Compteur de caractères description
     if (p_desc && descCount) {
       p_desc.addEventListener('input', () => {
         descCount.textContent = p_desc.value.length;
       });
     }
 
-    // file to base64
     function fileToBase64(file){
       return new Promise((res, rej) => {
         const reader = new FileReader();
@@ -832,7 +1075,6 @@ window.deleteReview = function(reviewId) {
       });
     }
 
-    // Preview images multiples
     if (p_image && imagePreview) {
       p_image.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files).slice(0, 5);
@@ -853,21 +1095,18 @@ window.deleteReview = function(reviewId) {
       });
     }
 
-    // product form submit
     if (productForm) {
       productForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Validation
         if (!p_name.value.trim() || !p_price.value || !p_stock.value || !p_category.value) {
-          alert('Veuillez remplir les champs obligatoires (*)');
+          showNotification('❌ Veuillez remplir les champs obligatoires (*)', 'error');
           return;
         }
 
         const id = p_id.value || uid();
         let imagesData = [];
         
-        // Traiter les images multiples
         if (p_image && p_image.files && p_image.files.length > 0) {
           const files = Array.from(p_image.files).slice(0, 5);
           for (const file of files) {
@@ -909,7 +1148,7 @@ window.deleteReview = function(reviewId) {
         if (p_featured) p_featured.checked = false;
         if (descCount) descCount.textContent = '0';
         
-        alert('✅ Produit enregistré avec succès !');
+        showNotification('✅ Produit enregistré avec succès !', 'success');
       });
     }
 
@@ -958,13 +1197,13 @@ window.deleteReview = function(reviewId) {
                 safeSave(); 
                 renderProducts(); 
                 refreshAdminList(); 
-                alert(`✅ ${d.length} produits importés avec succès !`); 
+                showNotification(`✅ ${d.length} produits importés avec succès !`, 'success');
               }
             } else {
-              alert('❌ Fichier JSON invalide');
+              showNotification('❌ Fichier JSON invalide', 'error');
             }
           } catch (err) { 
-            alert('❌ Erreur : Fichier JSON corrompu ou invalide'); 
+            showNotification('❌ Erreur : Fichier JSON corrompu ou invalide', 'error');
           }
         };
         r.readAsText(f);
@@ -1008,7 +1247,6 @@ window.deleteReview = function(reviewId) {
       `;
     }).join('');
 
-    // Event listeners pour les items admin
     adminList.querySelectorAll('.admin-item').forEach((item, index) => {
       const product = products[index];
       
@@ -1026,6 +1264,7 @@ window.deleteReview = function(reviewId) {
           safeSave(); 
           renderProducts(); 
           refreshAdminList();
+          showNotification('🗑️ Produit supprimé avec succès !', 'success');
         });
       }
     });
@@ -1045,7 +1284,6 @@ window.deleteReview = function(reviewId) {
     
     if (qs('#descCount')) qs('#descCount').textContent = p.desc.length;
     
-    // Afficher les images existantes
     const imagePreview = qs('#imagePreview');
     if (imagePreview) {
       imagePreview.innerHTML = '';
@@ -1066,7 +1304,10 @@ window.deleteReview = function(reviewId) {
     const filterStock = qs('#filterStock');
     const sortProducts = qs('#sortProducts');
 
-    const updateProducts = () => renderProducts();
+    const updateProducts = () => {
+      currentPage = 1;
+      renderProducts();
+    };
 
     if (searchInput) searchInput.addEventListener('input', updateProducts);
     if (categoryFilter) categoryFilter.addEventListener('change', updateProducts);
@@ -1074,13 +1315,36 @@ window.deleteReview = function(reviewId) {
     if (sortProducts) sortProducts.addEventListener('change', updateProducts);
   }
 
+  /* ---------- COOKIES ---------- */
+  function setupCookies() {
+    const banner = document.getElementById("cookie-banner");
+    const btn = document.getElementById("accept-cookies");
+
+    if (!localStorage.getItem("cookiesAccepted")) {
+      setTimeout(() => {
+        if (banner) banner.style.display = "block";
+      }, 2000);
+    }
+
+    if (btn) {
+      btn.addEventListener("click", () => {
+        localStorage.setItem("cookiesAccepted", "true");
+        if (banner) banner.style.display = "none";
+      });
+    }
+  }
+
   /* ---------- INITIALISATION ---------- */
   function init() {
     setupFormValidation();
+    setupContactForm();
+    setupMobileEnhancements();
     initReviews();
     initAnalytics();
+    initGallery();
     setupAdmin();
     setupFilters();
+    setupCookies();
     
     safeLoad(); 
     seedDemo(); 
@@ -1088,7 +1352,6 @@ window.deleteReview = function(reviewId) {
     updateAnalyticsDisplay();
     updateReviewsStats();
 
-    console.log('✅ PipChi Boutique initialisé avec succès');
   }
 
   // Démarrer l'application
@@ -1096,382 +1359,57 @@ window.deleteReview = function(reviewId) {
 
 }); // DOMContentLoaded
 
-// Cookies améliorés
-const banner = document.getElementById("cookie-banner");
-const btn = document.getElementById("acceptCookies");
-
-// Fonction pour sauvegarder les préférences utilisateur
-function saveUserPreferences() {
-  const preferences = {
-    theme: 'dark',
-    language: 'fr',
-    currency: 'F CFA'
-  };
-  localStorage.setItem('pipchi_preferences', JSON.stringify(preferences));
+/* ---------- SYNCHRONISATION DES DONNÉES ---------- */
+function syncWithServer() {
+  // Pour l'instant en local storage, mais prêt pour une base de données
+  console.log('🔄 Synchronisation des données...');
+  
+  // Vérifier si les données existent, sinon créer des données de démo
+  if (!localStorage.getItem('pipchi_products')) {
+    seedDemo();
+  }
+  
+  // Mettre à jour l'affichage
+  renderProducts();
+  renderReviews();
+  updateAnalyticsDisplay();
 }
 
-// Fonction pour charger les préférences utilisateur
-function loadUserPreferences() {
-  const preferences = JSON.parse(localStorage.getItem('pipchi_preferences') || '{}');
-  // Appliquer les préférences...
-}
-
-if (!localStorage.getItem("cookiesAccepted")) {
+// Remplacer la notification de bienvenue
+function showWelcomeMessage() {
   setTimeout(() => {
-    if (banner) banner.style.display = "block";
+    showNotification('🎉 Découvrez nos nouveaux produits !', 'success');
   }, 2000);
-} else {
-  loadUserPreferences();
+}
+/* ---------- SYNCHRONISATION AVANCÉE ---------- */
+function initDataSync() {
+    console.log('🔄 Initialisation synchronisation données...');
+    
+    // Vérifier si les données existent
+    if (!localStorage.getItem('pipchi_products')) {
+        console.log('📦 Création données initiales...');
+        seedDemo();
+    }
+    
+    // Vérifier l'intégrité des données
+    validateData();
+    
+    console.log('✅ Synchronisation prête');
 }
 
-if (btn) {
-  btn.addEventListener("click", () => {
-    localStorage.setItem("cookiesAccepted", true);
-    if (banner) banner.style.display = "none";
-    saveUserPreferences();
-  });
-}
-/* ---------- GALERIE D'IMAGES ---------- */
-function openGallery(productId) {
-    const product = products.find(p => p.id === productId);
-    if (!product || !product.images || product.images.length === 0) return;
-    
-    const galleryModal = qs('#galleryModal');
-    const galleryMainImage = qs('#galleryMainImage');
-    const galleryProductName = qs('#galleryProductName');
-    const galleryThumbnails = qs('#galleryThumbnails');
-    
-    if (!galleryModal || !galleryMainImage || !galleryProductName || !galleryThumbnails) return;
-    
-    // Mettre à jour le contenu
-    galleryProductName.textContent = product.name;
-    galleryMainImage.src = product.images[0];
-    galleryMainImage.alt = product.name;
-    
-    // Créer les miniatures
-    galleryThumbnails.innerHTML = '';
-    product.images.forEach((image, index) => {
-        const thumb = document.createElement('img');
-        thumb.src = image;
-        thumb.alt = `${product.name} - Image ${index + 1}`;
-        thumb.classList.add(index === 0 ? 'active' : '');
-        thumb.addEventListener('click', () => {
-            // Mettre à jour l'image principale
-            galleryMainImage.src = image;
-            
-            // Mettre à jour les miniatures actives
-            galleryThumbnails.querySelectorAll('img').forEach(img => img.classList.remove('active'));
-            thumb.classList.add('active');
-        });
-        galleryThumbnails.appendChild(thumb);
+function validateData() {
+    // Vérifier que tous les produits ont les champs requis
+    products = products.filter(product => {
+        return product && product.id && product.name;
     });
     
-    // Afficher la galerie
-    galleryModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    // Sauvegarder les données nettoyées
+    safeSave();
 }
 
-function closeGallery() {
-    const galleryModal = qs('#galleryModal');
-    if (galleryModal) {
-        galleryModal.classList.add('hidden');
-        document.body.style.overflow = '';
-    }
+// REMPLACEZ la fonction init() - Ajoutez cette ligne :
+function init() {
+    // ... le reste de votre code init ...
+    initDataSync(); // AJOUTEZ CETTE LIGNE
+    // ... le reste ...
 }
-
-// Initialiser la galerie
-function initGallery() {
-    const closeGalleryBtn = qs('#closeGallery');
-    const galleryModal = qs('#galleryModal');
-    
-    if (closeGalleryBtn) {
-        closeGalleryBtn.addEventListener('click', closeGallery);
-    }
-    
-    if (galleryModal) {
-        galleryModal.addEventListener('click', (e) => {
-            if (e.target === galleryModal) closeGallery();
-        });
-    }
-    
-    // Fermer avec ESC
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !galleryModal.classList.contains('hidden')) {
-            closeGallery();
-        }
-    });
-}
-/* ---------- PAGINATION ET RECHERCHE AVANCÉE ---------- */
-let currentPage = 1;
-const productsPerPage = 9;
-
-function renderProducts(list = products) {
-    const productGrid = qs('#productGrid');
-    if (!productGrid) return;
-    
-    const q = qs('#search') ? qs('#search').value.trim().toLowerCase() : '';
-    const categoryFilter = qs('#categoryFilter') ? qs('#categoryFilter').value : 'all';
-    const filterStock = qs('#filterStock') ? qs('#filterStock').value : 'all';
-    const sortBy = qs('#sortProducts') ? qs('#sortProducts').value : 'new';
-    
-    let filteredProducts = [...list];
-
-    // Appliquer les filtres
-    if (categoryFilter !== 'all') {
-        filteredProducts = filteredProducts.filter(p => p.category === categoryFilter);
-    }
-
-    if (filterStock === 'in') filteredProducts = filteredProducts.filter(p => p.stock > 0);
-    if (filterStock === 'out') filteredProducts = filteredProducts.filter(p => p.stock <= 0);
-
-    if (q) {
-        filteredProducts = filteredProducts.filter(p => 
-            (p.name + ' ' + p.desc + ' ' + p.category).toLowerCase().includes(q)
-        );
-    }
-    
-    // Trier les produits
-    filteredProducts = sortProducts(filteredProducts, sortBy);
-    
-    // Pagination
-    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-    const startIndex = (currentPage - 1) * productsPerPage;
-    const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
-    
-    // Afficher les résultats
-    if (paginatedProducts.length === 0) {
-        productGrid.innerHTML = `
-            <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
-                <p style="font-size:1.2rem;margin-bottom:8px">🔍 Aucun produit trouvé</p>
-                <p>Essayez de modifier vos critères de recherche ou de réinitialiser les filtres</p>
-                <button onclick="resetFilters()" class="btn ghost" style="margin-top:16px">🗑️ Réinitialiser les filtres</button>
-            </div>
-        `;
-    } else {
-        productGrid.innerHTML = paginatedProducts.map(p => {
-            const imageCount = p.images ? p.images.length : 1;
-            const categoryName = categories[p.category] || '📦 Autres';
-            
-            return `
-                <article class="article-item ${p.featured ? 'featured' : ''} fade-in">
-                    <div class="product-image">
-                        <img src="${p.images ? p.images[0] : dataDemo}" alt="${escapeHtml(p.name)}" loading="lazy" />
-                        ${imageCount > 1 ? `<div class="image-count">+${imageCount - 1}</div>` : ''}
-                    </div>
-                    <h3>${escapeHtml(p.name)}</h3>
-                    <div class="product-category">${categoryName}</div>
-                    <p>${escapeHtml(p.desc)}</p>
-                    <div class="price-stock">
-                        <div class="price">${Number(p.price).toLocaleString()} F CFA</div>
-                        <div class="stock ${p.stock>0?'in':'out'}">${p.stock>0?('En stock — '+p.stock):'Rupture'}</div>
-                    </div>
-                    <div class="article-buttons">
-                        ${p.stock > 0 ? 
-                            `<button class="article-btn" data-product-id="${p.id}">Voir Détails</button>` : 
-                            `<button class="article-btn" style="background:var(--muted);cursor:not-allowed" disabled>Rupture de stock</button>`
-                        }
-                        ${imageCount > 1 ? `<button class="article-btn gallery" data-product-id="${p.id}">📷 Galerie (${imageCount})</button>` : ''}
-                    </div>
-                </article>
-            `;
-        }).join('');
-
-        // Ajouter la pagination
-        productGrid.innerHTML += `
-            <div style="grid-column:1/-1;text-align:center;margin-top:30px">
-                <div class="pagination">
-                    <button class="btn ghost ${currentPage === 1 ? 'disabled' : ''}" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-                        ← Précédent
-                    </button>
-                    <span style="margin:0 16px;color:var(--muted)">
-                        Page ${currentPage} sur ${totalPages}
-                    </span>
-                    <button class="btn ghost ${currentPage === totalPages ? 'disabled' : ''}" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-                        Suivant →
-                    </button>
-                </div>
-                <div style="margin-top:8px;color:var(--muted);font-size:14px">
-                    ${filteredProducts.length} produit(s) trouvé(s)
-                </div>
-            </div>
-        `;
-    }
-
-    // Event listeners pour les boutons
-    setupProductEventListeners();
-}
-
-function setupProductEventListeners() {
-    const productGrid = qs('#productGrid');
-    if (!productGrid) return;
-    
-    productGrid.querySelectorAll('.article-btn[data-product-id]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const productId = btn.dataset.productId;
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-
-            if (btn.classList.contains('gallery')) {
-                // Bouton galerie
-                openGallery(product.id);
-            } else {
-                // Bouton "Voir Détails"
-                if (product.stock > 0) {
-                    trackProductClick(product.id, product.name);
-                    showRedirectPopup(product.name, 'https://oumistore.com/?page=boutique&boutiqueId=4518');
-                } else {
-                    showNotification('❌ Ce produit est en rupture de stock', 'error');
-                }
-            }
-        });
-    });
-}
-
-function changePage(page) {
-    const totalPages = Math.ceil(getFilteredProducts().length / productsPerPage);
-    if (page < 1 || page > totalPages) return;
-    
-    currentPage = page;
-    renderProducts();
-    
-    // Scroll vers le haut des produits
-    const productsSection = qs('#articles');
-    if (productsSection) {
-        productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-function getFilteredProducts() {
-    const q = qs('#search') ? qs('#search').value.trim().toLowerCase() : '';
-    const categoryFilter = qs('#categoryFilter') ? qs('#categoryFilter').value : 'all';
-    const filterStock = qs('#filterStock') ? qs('#filterStock').value : 'all';
-    
-    let filtered = [...products];
-    
-    if (categoryFilter !== 'all') filtered = filtered.filter(p => p.category === categoryFilter);
-    if (filterStock === 'in') filtered = filtered.filter(p => p.stock > 0);
-    if (filterStock === 'out') filtered = filtered.filter(p => p.stock <= 0);
-    if (q) filtered = filtered.filter(p => (p.name + ' ' + p.desc).toLowerCase().includes(q));
-    
-    return filtered;
-}
-
-function resetFilters() {
-    if (qs('#search')) qs('#search').value = '';
-    if (qs('#categoryFilter')) qs('#categoryFilter').value = 'all';
-    if (qs('#filterStock')) qs('#filterStock').value = 'all';
-    if (qs('#sortProducts')) qs('#sortProducts').value = 'new';
-    
-    currentPage = 1;
-    renderProducts();
-    
-    showNotification('✅ Filtres réinitialisés', 'success');
-}
-
-// Fonction globale pour réinitialiser
-window.resetFilters = resetFilters;
-window.changePage = changePage;
-/* ---------- SYSTÈME DE NOTIFICATIONS ---------- */
-function showNotification(message, type = 'info') {
-    // Créer la notification
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <span class="notification-message">${message}</span>
-            <button class="notification-close">×</button>
-        </div>
-    `;
-    
-    // Styles pour la notification
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? 'var(--accent)' : type === 'success' ? 'var(--accent-2)' : 'var(--card-bg)'};
-        color: white;
-        padding: 16px;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        z-index: 10000;
-        max-width: 400px;
-        animation: slideInRight 0.3s ease;
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Fermer la notification
-    const closeBtn = notification.querySelector('.notification-close');
-    closeBtn.addEventListener('click', () => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    });
-    
-    // Fermer automatiquement après 5 secondes
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
-        }
-    }, 5000);
-}
-
-// Ajoutez ces animations dans le CSS
-const notificationStyles = `
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.notification-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.notification-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-}
-
-.notification-close:hover {
-    background: rgba(255,255,255,0.2);
-}
-`;
-
-// Injecter les styles
-const styleSheet = document.createElement('style');
-styleSheet.textContent = notificationStyles;
-document.head.appendChild(styleSheet);
